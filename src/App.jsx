@@ -213,7 +213,7 @@ function PinEntry({ employee, onSuccess, onBack }) {
         </div>
 
         <p style={{ color:"var(--muted)", fontSize:11, marginTop:20 }}>
-          PIN is your birthday in MMYY format<br />(e.g., March 1990 = 0390)
+          Enter the 4-digit PIN assigned to you
         </p>
       </div>
     </div>
@@ -251,6 +251,7 @@ function EmployeeScreen({ employees, activeSessions, onClockIn, onStartOT, onPau
   const [pinVerified,  setPinVerified]  = useState(false);
   const [todayEntries, setTodayEntries] = useState([]);
   const [tick,         setTick]         = useState(0);
+  const [empView,      setEmpView]      = useState("today"); // "today" | "records"
 
   useEffect(() => { const i = setInterval(() => setTick(x => x+1), 1000); return () => clearInterval(i); }, []);
 
@@ -341,6 +342,19 @@ function EmployeeScreen({ employees, activeSessions, onClockIn, onStartOT, onPau
       {selected && pinVerified && (
         <>
           <LiveClock />
+
+          {/* Tab bar */}
+          <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+            {[["today","Today's Shift"],["records","My Records"]].map(([v,label]) => (
+              <button key={v} onClick={() => setEmpView(v)} style={{ flex:1, background: empView===v ? "var(--accent)" : "var(--card)", border: empView===v ? "1.5px solid var(--accent)" : "1.5px solid var(--border)", borderRadius:10, padding:"10px 0", color: empView===v ? "#fff" : "var(--muted)", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"'DM Sans'", transition:"all .18s" }}>{label}</button>
+            ))}
+          </div>
+
+          {/* MY RECORDS VIEW */}
+          {empView === "records" && <MyRecords employeeName={selected} onSwitch={() => { setSelected(""); setPinVerified(false); }} />}
+
+          {/* TODAY VIEW */}
+          {empView === "today" && (
           <div style={{ background:"var(--card)", border: session?.type === "overtime" ? "1.5px solid var(--purple)" : "1.5px solid var(--border)", borderRadius:14, padding:20 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
               <div style={{ fontWeight:700, fontSize:16 }}>{selected}</div>
@@ -394,6 +408,131 @@ function EmployeeScreen({ employees, activeSessions, onClockIn, onStartOT, onPau
               </>
             )}
           </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ╔════════════════════════════════════════════════════════════════════════
+// ║ MY RECORDS — employee's own time history with date filter + PDF export
+// ╚════════════════════════════════════════════════════════════════════════
+function MyRecords({ employeeName, onSwitch }) {
+  const [filterStart, setFilterStart] = useState(() => new Date(Date.now()-30*24*60*60*1000).toLocaleDateString("en-CA",{timeZone:TZ}));
+  const [filterEnd,   setFilterEnd]   = useState("");
+  const [allEntries,  setAllEntries]  = useState([]);
+  const [loading,     setLoading]     = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const constraints = [where("employee","==",employeeName)];
+    if (filterStart) constraints.push(where("date",">=",filterStart));
+    if (filterEnd)   constraints.push(where("date","<=",filterEnd));
+    const q = query(collection(db,"entries"), ...constraints);
+    return onSnapshot(q, snap => {
+      setAllEntries(snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.clockIn-a.clockIn));
+      setLoading(false);
+    }, () => setLoading(false));
+  }, [employeeName, filterStart, filterEnd]);
+
+  const regular = allEntries.filter(e => e.type === "regular");
+  const ot      = allEntries.filter(e => e.type === "overtime");
+  const sumMs   = (list) => list.reduce((acc,e) => acc+(e.clockOut-e.clockIn-(e.breakMs||0)),0);
+  const fmtTot  = (ms) => `${Math.floor(ms/3_600_000)}h ${Math.floor((ms%3_600_000)/60_000)}m`;
+
+  const handleExport = () => {
+    const periodLabel = filterStart && filterEnd ? `${prettyDate(filterStart)} – ${prettyDate(filterEnd)}` : filterStart ? `From ${prettyDate(filterStart)}` : "All Dates";
+    const regRows = regular.map(e=>`<tr><td>${prettyDate(e.date)}</td><td>${fmtTime(e.clockIn)}</td><td>${fmtTime(e.clockOut)}</td><td>${msToHMS(e.breakMs||0)}</td><td style="font-weight:600">${e.duration}</td></tr>`).join("");
+    const otRows  = ot.map(e=>`<tr><td>${prettyDate(e.date)}</td><td>${fmtTime(e.clockIn)}</td><td>${fmtTime(e.clockOut)}</td><td>${msToHMS(e.breakMs||0)}</td><td style="font-weight:600;color:#7c3aed">${e.duration}</td></tr>`).join("");
+    const html = `<!DOCTYPE html><html><head><title>My Time Records</title><style>body{font-family:'Segoe UI',Arial,sans-serif;padding:40px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}h2{font-size:16px;font-weight:700;margin-top:28px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #0f1117}h2.ot{color:#7c3aed;border-bottom-color:#7c3aed}.meta{color:#555;font-size:13px;margin-bottom:6px}.badge{display:inline-block;background:#0f1117;color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:18px}table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px}th{background:#0f1117;color:#fff;padding:10px 12px;text-align:left}th.ot{background:#7c3aed}td{padding:9px 12px;border-bottom:1px solid #eee}tr:nth-child(even) td{background:#f8f8f8}.summary{margin-top:8px;font-size:13px;color:#444;display:flex;gap:24px}.summary span{font-weight:700;color:#0f1117}.footer{margin-top:24px;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px}@media print{body{padding:20px}}</style></head><body>
+<h1>My Time Records</h1>
+<div class="meta">Employee: <strong>${employeeName}</strong> &nbsp;|&nbsp; Period: <strong>${periodLabel}</strong> &nbsp;|&nbsp; Timezone: <strong>${tzAbbr(Date.now())} (Los Angeles)</strong></div>
+<div class="badge">Generated: ${new Date().toLocaleString("en-US",{timeZone:TZ})}</div>
+<h2>Regular Shifts</h2>${regular.length>0?`<table><thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Break</th><th>Total</th></tr></thead><tbody>${regRows}</tbody></table><div class="summary"><div>Entries: <span>${regular.length}</span></div><div>Total Hours: <span>${fmtTot(sumMs(regular))}</span></div></div>`:'<p style="color:#999;font-style:italic;padding:12px 0">No regular shifts in this period.</p>'}
+<h2 class="ot">⚡ Overtime</h2>${ot.length>0?`<table><thead><tr><th class="ot">Date</th><th class="ot">Clock In</th><th class="ot">Clock Out</th><th class="ot">Break</th><th class="ot">Total</th></tr></thead><tbody>${otRows}</tbody></table><div class="summary"><div>OT Entries: <span>${ot.length}</span></div><div>OT Hours: <span style="color:#7c3aed">${fmtTot(sumMs(ot))}</span></div></div>`:'<p style="color:#999;font-style:italic;padding:12px 0">No overtime in this period.</p>'}
+<div class="footer">All times in PST/PDT (Los Angeles, California) • Combined total: ${fmtTot(sumMs(regular)+sumMs(ot))}</div>
+</body></html>`;
+    const w = window.open("","_blank"); if(!w){alert("Please allow popups");return;} w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600);
+  };
+
+  return (
+    <div style={{ background:"var(--card)", border:"1.5px solid var(--border)", borderRadius:14, padding:20 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+        <div style={{ fontWeight:700, fontSize:16 }}>{employeeName}</div>
+        <button onClick={onSwitch} style={{ background:"none", border:"none", color:"var(--muted)", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans'" }}>← Switch</button>
+      </div>
+
+      {/* Date filter */}
+      <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+        <div style={{ flex:1 }}>
+          <label style={{ fontSize:10, color:"var(--muted)", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, display:"block", marginBottom:4 }}>From</label>
+          <input type="date" value={filterStart} onChange={e=>setFilterStart(e.target.value)} style={{ width:"100%", background:"var(--navy)", border:"1.5px solid var(--border)", borderRadius:8, color:"var(--text)", padding:"8px 10px", fontSize:13, fontFamily:"'DM Mono'", outline:"none" }} />
+        </div>
+        <div style={{ flex:1 }}>
+          <label style={{ fontSize:10, color:"var(--muted)", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, display:"block", marginBottom:4 }}>To</label>
+          <input type="date" value={filterEnd} onChange={e=>setFilterEnd(e.target.value)} style={{ width:"100%", background:"var(--navy)", border:"1.5px solid var(--border)", borderRadius:8, color:"var(--text)", padding:"8px 10px", fontSize:13, fontFamily:"'DM Mono'", outline:"none" }} />
+        </div>
+        <div style={{ display:"flex", alignItems:"flex-end" }}>
+          <button onClick={handleExport} style={{ background:"var(--accent)", border:"none", borderRadius:8, color:"#fff", padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:13, fontFamily:"'DM Sans'", display:"flex", alignItems:"center", gap:6 }}>
+            <Download size={14} /> PDF
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign:"center", padding:"32px 0" }}>
+          <Loader2 size={22} color="var(--accent)" style={{ animation:"spin 1s linear infinite" }} />
+        </div>
+      ) : allEntries.length === 0 ? (
+        <div style={{ textAlign:"center", padding:"32px 0", color:"var(--muted)" }}>
+          <CalendarDays size={28} style={{ marginBottom:10, opacity:.4 }} />
+          <p style={{ fontSize:13 }}>No entries found for this period.</p>
+        </div>
+      ) : (
+        <>
+          {/* Summary row */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:14 }}>
+            {[["Regular",regular.length,"var(--accent)"],["Reg Hours",fmtTot(sumMs(regular)),"var(--green)"],["OT",ot.length,"var(--purple)"],["OT Hours",fmtTot(sumMs(ot)),"var(--purple)"]].map(([l,v,c])=>(
+              <div key={l} style={{ background:"var(--navy)", borderRadius:8, padding:"10px 12px" }}>
+                <div style={{ fontSize:10, color:"var(--muted)", fontWeight:600, textTransform:"uppercase", letterSpacing:.6, marginBottom:4 }}>{l}</div>
+                <div style={{ fontSize:18, fontWeight:700, color:c }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Regular entries */}
+          {regular.length > 0 && (
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:.8, marginBottom:8 }}>Regular Shifts</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {regular.map(e => (
+                  <div key={e.id} style={{ background:"var(--navy)", borderRadius:8, padding:"10px 14px", display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, fontSize:12 }}>
+                    <div><div style={{ color:"var(--muted)", fontSize:10, marginBottom:2 }}>DATE</div><div style={{ fontWeight:600 }}>{prettyDate(e.date)}</div></div>
+                    <div><div style={{ color:"var(--muted)", fontSize:10, marginBottom:2 }}>IN</div><div style={{ fontFamily:"'DM Mono'", color:"var(--green)" }}>{fmtTime(e.clockIn)}</div></div>
+                    <div><div style={{ color:"var(--muted)", fontSize:10, marginBottom:2 }}>OUT</div><div style={{ fontFamily:"'DM Mono'", color:"var(--red)" }}>{fmtTime(e.clockOut)}</div></div>
+                    <div><div style={{ color:"var(--muted)", fontSize:10, marginBottom:2 }}>TOTAL</div><div style={{ fontFamily:"'DM Mono'", color:"var(--accent)", fontWeight:600 }}>{e.duration}</div></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* OT entries */}
+          {ot.length > 0 && (
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:"var(--purple)", textTransform:"uppercase", letterSpacing:.8, marginBottom:8, display:"flex", alignItems:"center", gap:6 }}><Zap size={12} /> Overtime</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {ot.map(e => (
+                  <div key={e.id} style={{ background:"rgba(167,139,250,.08)", border:"1px solid rgba(167,139,250,.2)", borderRadius:8, padding:"10px 14px", display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, fontSize:12 }}>
+                    <div><div style={{ color:"var(--muted)", fontSize:10, marginBottom:2 }}>DATE</div><div style={{ fontWeight:600 }}>{prettyDate(e.date)}</div></div>
+                    <div><div style={{ color:"var(--muted)", fontSize:10, marginBottom:2 }}>IN</div><div style={{ fontFamily:"'DM Mono'", color:"var(--green)" }}>{fmtTime(e.clockIn)}</div></div>
+                    <div><div style={{ color:"var(--muted)", fontSize:10, marginBottom:2 }}>OUT</div><div style={{ fontFamily:"'DM Mono'", color:"var(--red)" }}>{fmtTime(e.clockOut)}</div></div>
+                    <div><div style={{ color:"var(--muted)", fontSize:10, marginBottom:2 }}>TOTAL</div><div style={{ fontFamily:"'DM Mono'", color:"var(--purple)", fontWeight:600 }}>{e.duration}</div></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -582,7 +721,7 @@ function EmployeeManagement({ employees, onAdd, onRemove, onSetPin }) {
             <Btn variant="primary" size="sm" onClick={add} disabled={!newName.trim() || newPin.length !== 4}><UserPlus size={14} /> Add</Btn>
           </div>
           <p style={{ fontSize:11, color: pinError ? "var(--red)" : "var(--muted)" }}>
-            {pinError || "PIN = birthday in MMYY (e.g. March 1990 = 0390)"}
+            {pinError || "Enter the 4-digit PIN assigned to you"}
           </p>
         </div>
 
@@ -622,7 +761,7 @@ function EmployeeManagement({ employees, onAdd, onRemove, onSetPin }) {
                       <Btn variant="ghost" size="sm" onClick={() => { setEditPinId(null); setPinError(""); }}>Cancel</Btn>
                     </div>
                     {pinError && <p style={{ fontSize:11, color:"var(--red)" }}>{pinError}</p>}
-                    <p style={{ fontSize:11, color:"var(--muted)" }}>4 digits only (e.g. birthday MMYY: 0390)</p>
+                    <p style={{ fontSize:11, color:"var(--muted)" }}>4 digits only</p>
                   </div>
                 )}
               </div>
@@ -791,6 +930,7 @@ function AdminDashboard({ employees, activeSessions, onSaveEntry, onDeleteEntry,
             </div>
           </div>
           <Btn variant="outline" onClick={handleExport} size="sm"><Download size={15} /> Export PDF</Btn>
+          <a href="https://github.com/algerpartnershhci/timetrack-vas/blob/main/src/App.jsx" target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:"var(--muted)", textDecoration:"none", display:"flex", alignItems:"center", gap:4 }}>⚙️ Change admin password</a>
         </div>
 
         <ActiveSessions activeSessions={activeSessions} />
