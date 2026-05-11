@@ -598,7 +598,7 @@ function EmployeeManagement({ employees, onAdd, onRemove, onSetPin }) {
                     <div style={{ fontSize:13, fontWeight:600 }}>{emp.name}</div>
                     <div style={{ fontSize:11, color:"var(--muted)", marginTop:2, display:"flex", alignItems:"center", gap:6 }}>
                       <Lock size={10} />
-                      {emp.pin ? <span style={{ fontFamily:"'DM Mono'" }}>PIN: ••••</span> : <span style={{ color:"var(--amber)" }}>⚠ No PIN set</span>}
+                      {emp.pin ? <span style={{ fontFamily:"'DM Mono'", color:"var(--accent)", fontWeight:600, letterSpacing:3 }}>PIN: {emp.pin}</span> : <span style={{ color:"var(--amber)" }}>⚠ No PIN set</span>}
                     </div>
                   </div>
                   <div style={{ display:"flex", gap:6 }}>
