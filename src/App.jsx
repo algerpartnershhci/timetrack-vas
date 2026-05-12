@@ -273,20 +273,26 @@ function MyRecords({ employeeName, onSwitch }) {
   const defaultStart = new Date(Date.now() - 30*24*60*60*1000).toLocaleDateString("en-CA", { timeZone:TZ });
   const [filterStart, setFilterStart] = useState(defaultStart);
   const [filterEnd,   setFilterEnd]   = useState("");
-  const [entries,     setEntries]     = useState([]);
+  const [allEntries,  setAllEntries]  = useState([]);
   const [loading,     setLoading]     = useState(true);
 
+  // Only filter by employee in Firestore (no composite index needed)
+  // Date filtering is done client-side
   useEffect(() => {
     setLoading(true);
-    const constraints = [where("employee", "==", employeeName)];
-    if (filterStart) constraints.push(where("date", ">=", filterStart));
-    if (filterEnd)   constraints.push(where("date", "<=", filterEnd));
-    const q = query(collection(db, "entries"), ...constraints);
+    const q = query(collection(db, "entries"), where("employee", "==", employeeName));
     return onSnapshot(q, snap => {
-      setEntries(snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => b.clockIn - a.clockIn));
+      setAllEntries(snap.docs.map(d => ({ id:d.id, ...d.data() })));
       setLoading(false);
     }, () => setLoading(false));
-  }, [employeeName, filterStart, filterEnd]);
+  }, [employeeName]);
+
+  // Apply date filter client-side
+  const entries = allEntries.filter(e => {
+    if (filterStart && e.date < filterStart) return false;
+    if (filterEnd   && e.date > filterEnd)   return false;
+    return true;
+  }).sort((a,b) => b.clockIn - a.clockIn);
 
   const regular = entries.filter(e => e.type === "regular");
   const ot      = entries.filter(e => e.type === "overtime");
