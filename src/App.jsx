@@ -59,6 +59,8 @@ const CSS = `
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
   @keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer;opacity:.7}
+  input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1}
 `;
 
 // ╔══════════════════════════════════════════════════
