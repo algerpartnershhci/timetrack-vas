@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogIn, LogOut, Shield, Download, Edit2, Trash2, ArrowLeft, Eye, EyeOff, AlertCircle, User, CalendarDays, Timer, Pause, Play, Zap, AlertTriangle, UserPlus, Users, X, Loader2, Lock, Delete, UserX, Sun, Moon } from "lucide-react";
+import { LogIn, LogOut, Shield, Download, Edit2, Trash2, ArrowLeft, Eye, EyeOff, AlertCircle, User, CalendarDays, Timer, Pause, Play, Zap, AlertTriangle, UserPlus, Users, X, Loader2, Lock, Delete, UserX } from "lucide-react";
 import { db } from "./firebase";
 import { collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy } from "firebase/firestore";
 
@@ -33,14 +33,11 @@ const CSS = `
   body{font-family:'DM Sans',sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh}
   :root{--navy:#0f1117;--card:#1e2333;--border:#2a2f45;--accent:#4f8ef7;--green:#3ecf8e;--red:#f76b6b;--amber:#f5a623;--purple:#a78bfa;--muted:#7a82a0;--text:#e8eaf0}
   ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:var(--navy)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-  body.light-mode{--navy:#f0f2fb;--card:#ffffff;--border:#dde2f0;--accent:#2563eb;--green:#059669;--red:#dc2626;--amber:#d97706;--purple:#7c3aed;--muted:#6b7494;--text:#1a1e2e}
-  body.light-mode .dm-mono{color:#1a1e2e}
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
   @keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
   input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer;opacity:.7}
   input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1}
-  body.light-mode input[type="date"]::-webkit-calendar-picker-indicator{filter:none;opacity:.6}
 `;
 
 function Toast({msg,type}){const c={error:"var(--red)",warn:"var(--amber)",ot:"var(--purple)"};return<div style={{position:"fixed",bottom:28,left:"50%",transform:"translateX(-50%)",background:c[type]||"var(--green)",color:"#fff",padding:"12px 24px",borderRadius:10,fontWeight:600,fontSize:14,boxShadow:"0 8px 32px rgba(0,0,0,.4)",zIndex:9999,animation:"fadeUp .25s ease",maxWidth:"90vw"}}>{msg}</div>;}
@@ -378,7 +375,6 @@ function AdminDashboard({employees,activeSessions,onSaveEntry,onDeleteEntry,onTo
   };
   return(
     <div style={{minHeight:"100vh",background:"var(--navy)",padding:20}}>
-      <button onClick={toggleTheme} title={theme==="dark"?"Switch to light mode":"Switch to dark mode"} style={{position:"fixed",top:14,right:14,zIndex:1000,background:"var(--card)",border:"1.5px solid var(--border)",borderRadius:10,padding:"7px",cursor:"pointer",color:"var(--muted)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,.15)"}}>{theme==="dark"?<Sun size={16}/>:<Moon size={16}/>}</button>
       {toast&&<Toast {...toast}/>}
       {editEntry&&<EditModal entry={editEntry} employees={employees} onSave={u=>{onSaveEntry(u);setEditEntry(null);showToast("Entry updated");}} onClose={()=>setEditEntry(null)}/>}
       {delConfirm&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20}}><div style={{background:"var(--card)",border:"1.5px solid var(--border)",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center"}}><AlertCircle size={32} color="var(--red)" style={{marginBottom:12}}/><h3 style={{fontWeight:700,marginBottom:8}}>Delete Entry?</h3><p style={{color:"var(--muted)",fontSize:13,marginBottom:20}}>This action cannot be undone.</p><div style={{display:"flex",gap:10}}><Btn variant="ghost" fullWidth onClick={()=>setDelConfirm(null)}>Cancel</Btn><Btn variant="red" fullWidth onClick={()=>{onDeleteEntry(delConfirm);setDelConfirm(null);showToast("Entry deleted","error");}}>Delete</Btn></div></div></div>}
@@ -430,9 +426,6 @@ function AdminDashboard({employees,activeSessions,onSaveEntry,onDeleteEntry,onTo
 // ── Root App ──────────────────────────────────────
 export default function App(){
   const[view,setView]=useState("home");const[employees,setEmployees]=useState([]);const[activeSessions,setActiveSessions]=useState({});const[toast,setToast]=useState(null);const[loaded,setLoaded]=useState(false);
-  const[theme,setTheme]=useState(()=>{try{return localStorage.getItem("tt-theme")||"dark";}catch{return "dark";}});
-  const toggleTheme=()=>{const n=theme==="dark"?"light":"dark";setTheme(n);try{localStorage.setItem("tt-theme",n);}catch{};};
-  useEffect(()=>{document.body.className=theme==="light"?"light-mode":"";},[theme]);
   useEffect(()=>{
     const unsubEmp=onSnapshot(query(collection(db,"employees"),orderBy("createdAt","asc")),snap=>{setEmployees(snap.docs.map(d=>({id:d.id,...d.data()})));setLoaded(true);},()=>setLoaded(true));
     const unsubAct=onSnapshot(collection(db,"activeSessions"),snap=>{const s={};snap.docs.forEach(d=>{s[d.id]=d.data();});setActiveSessions(s);});
@@ -546,7 +539,6 @@ export default function App(){
   return(
     <>
       <style>{CSS}</style>
-      <button onClick={toggleTheme} title={theme==="dark"?"Switch to light mode":"Switch to dark mode"} style={{position:"fixed",top:14,right:14,zIndex:1000,background:"var(--card)",border:"1.5px solid var(--border)",borderRadius:10,padding:"7px",cursor:"pointer",color:"var(--muted)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,.15)"}}>{theme==="dark"?<Sun size={16}/>:<Moon size={16}/>}</button>
       {toast&&<Toast {...toast}/>}
       {view==="home"        &&<HomeScreen onEmployee={()=>setView("employee")} onAdmin={()=>setView("admin-login")}/>}
       {view==="employee"    &&<EmployeeScreen employees={employees} activeSessions={activeSessions} onClockIn={handleClockIn} onStartOT={handleStartOT} onPause={handlePause} onResume={handleResume} onClockOut={handleClockOut} onBack={()=>setView("home")}/>}
