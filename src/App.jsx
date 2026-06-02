@@ -471,7 +471,7 @@ function AdminDashboard({employees,activeSessions,onSaveEntry,onDeleteEntry,onTo
 export default function App(){
   const[view,setView]=useState("home");const[employees,setEmployees]=useState([]);const[activeSessions,setActiveSessions]=useState({});const[toast,setToast]=useState(null);const[loaded,setLoaded]=useState(false);
   const[theme,setTheme]=useState(()=>{try{return localStorage.getItem("tt-theme")||"light";}catch{return "light";}});
-  useEffect(()=>{document.body.setAttribute("data-theme",theme);document.documentElement.setAttribute("data-theme",theme);try{localStorage.setItem("tt-theme",theme);}catch{}},[theme]);
+  useEffect(()=>{const bg=theme==="dark"?"#0f1117":"#ffffff";document.body.setAttribute("data-theme",theme);document.documentElement.setAttribute("data-theme",theme);document.documentElement.style.background=bg;document.body.style.background=bg;try{localStorage.setItem("tt-theme",theme);}catch{}},[theme]);
   const toggleTheme=()=>setTheme(t=>t==="light"?"dark":"light");
   useEffect(()=>{
     const unsubEmp=onSnapshot(query(collection(db,"employees"),orderBy("createdAt","asc")),snap=>{setEmployees(snap.docs.map(d=>({id:d.id,...d.data()})));setLoaded(true);},()=>setLoaded(true));
