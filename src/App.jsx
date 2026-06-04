@@ -159,12 +159,12 @@ function MyRecords({employeeName,onSwitch}){
   return(
     <div style={{background:"var(--card)",border:"1.5px solid var(--border)",borderRadius:14,padding:20}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}><div style={{fontWeight:700,fontSize:16}}>{employeeName}</div><button onClick={onSwitch} style={{background:"none",border:"none",color:"var(--muted)",cursor:"pointer",fontSize:12,fontFamily:"'DM Sans'"}}>← Switch</button></div>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <div style={{flex:1}}><label style={{fontSize:10,color:"var(--muted)",fontWeight:600,textTransform:"uppercase",letterSpacing:.7,display:"block",marginBottom:4}}>From</label><input type="date" value={filterStart} onChange={e=>setFilterStart(e.target.value)} style={selStyle}/></div>
         <div style={{flex:1}}><label style={{fontSize:10,color:"var(--muted)",fontWeight:600,textTransform:"uppercase",letterSpacing:.7,display:"block",marginBottom:4}}>To</label><input type="date" value={filterEnd} onChange={e=>setFilterEnd(e.target.value)} style={selStyle}/></div>
-        <div style={{display:"flex",alignItems:"flex-end",gap:6}}><button onClick={handleExport} style={{background:"var(--accent)",border:"none",borderRadius:8,color:"#fff",padding:"8px 14px",cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:"'DM Sans'",display:"flex",alignItems:"center",gap:6}}><Download size={14}/> PDF</button><button onClick={handleCSV} style={{background:"var(--green)",border:"none",borderRadius:8,color:"#0f3d24",padding:"8px 14px",cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:"'DM Sans'",display:"flex",alignItems:"center",gap:6}}><Download size={14}/> CSV (Excel)</button></div>
+        <div style={{display:"flex",alignItems:"flex-end",gap:6}}><button onClick={handleExport} style={{background:"var(--accent)",border:"none",borderRadius:8,color:"#fff",padding:"8px 14px",cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:"'DM Sans'",display:"flex",alignItems:"center",gap:6}}><Download size={14}/> PDF</button><button onClick={handleCSV} style={{background:"var(--green)",border:"none",borderRadius:8,color:"#0f3d24",padding:"8px 14px",cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:"'DM Sans'",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}><Download size={14}/> CSV</button></div>
       </div>
-      <p style={{fontSize:11,color:"var(--muted)",marginTop:-4,marginBottom:12}}>📄 PDF for printing • 📊 CSV (Excel) for sending data to be calculated. Send both if asked.</p>
+      <p style={{fontSize:11,color:"var(--muted)",marginTop:-4,marginBottom:12}}>📄 PDF for printing • 📊 CSV for sending data to be calculated. Send both if asked.</p>
       {loading?<div style={{textAlign:"center",padding:"32px 0"}}><Loader2 size={22} color="var(--accent)" style={{animation:"spin 1s linear infinite"}}/></div>:entries.length===0?<div style={{textAlign:"center",padding:"32px 0",color:"var(--muted)"}}><CalendarDays size={28} style={{marginBottom:10,opacity:.4}}/><p style={{fontSize:13}}>No entries found for this period.</p></div>:(
         <div>
           <div className="tt-grid4" style={{marginBottom:14}}>
@@ -469,7 +469,7 @@ function AdminDashboard({employees,activeSessions,onSaveEntry,onDeleteEntry,onTo
           </div>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <a href="https://github.com/algerpartnershhci/timetrack-vas/blob/main/src/App.jsx" target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"var(--muted)",textDecoration:"none"}}>⚙️ Change password</a>
-            <Btn variant="outline" onClick={handleExport} size="sm"><Download size={15}/> Export PDF</Btn><Btn variant="green" onClick={handleCSV} size="sm"><Download size={15}/> CSV (Excel)</Btn>
+            <Btn variant="outline" onClick={handleExport} size="sm"><Download size={15}/> Export PDF</Btn><Btn variant="green" onClick={handleCSV} size="sm"><Download size={15}/> CSV</Btn>
           </div>
         </div>
         <AdminClockControl employees={employees} activeSessions={activeSessions} onAdminClockIn={(name,type)=>onAdminClockIn(name,type,showToast)} onAdminClockOut={name=>onAdminClockOut(name,showToast)}/>
